@@ -1,0 +1,68 @@
+# ==========================================================================
+# render.yaml — Konfigurasi deployment Praktik Bidan di Render
+# ==========================================================================
+# PENTING: File ini TIDAK boleh memuat password, APP_KEY, token, atau secret.
+# Semua nilai sensitif WAJIB dikonfigurasi melalui:
+#   Dashboard Render → Service → Environment
+#
+# Dokumentasi Render:
+#   https://render.com/docs/render-yaml-spec
+# ==========================================================================
+
+services:
+  - type: web
+    name: praktik-bidan
+    runtime: docker
+    repo: https://github.com/FadhelAnshoruddin/Praktik_bidan
+    branch: main
+    dockerfilePath: ./Dockerfile
+
+    # Render menggunakan PORT env var (default 10000)
+    # Container harus mendengarkan di 0.0.0.0:$PORT
+
+    healthCheckPath: /up
+
+    # --- Environment Variables ---
+    # Variabel NON-SENSITIF dapat didefinisikan di sini.
+    # Variabel sensitif (APP_KEY, DB_PASSWORD, DATA_ENCRYPTION_KEY, dll.)
+    # HARUS diset manual melalui dashboard Render — jangan tulis di sini.
+    envVars:
+      - key: APP_NAME
+        value: "Praktik Bidan Mila"
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_LOCALE
+        value: id
+      - key: APP_FALLBACK_LOCALE
+        value: id
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: error
+      - key: CACHE_STORE
+        value: file
+      - key: DB_CONNECTION
+        value: mysql
+      - key: DB_TIMEZONE
+        value: "+07:00"
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_LIFETIME
+        value: "720"
+      - key: SESSION_ENCRYPT
+        value: "true"
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+
+    # Variabel berikut WAJIB diset manual di dashboard Render:
+    # - APP_KEY          : php artisan key:generate --show (lokal)
+    # - APP_URL          : https://<nama-service>.onrender.com
+    # - DB_HOST          : hostname Aiven MySQL
+    # - DB_PORT          : port Aiven MySQL (biasanya 19850 atau berbeda)
+    # - DB_DATABASE      : nama database di Aiven
+    # - DB_USERNAME      : username Aiven
+    # - DB_PASSWORD      : password Aiven (gunakan "Secret" di dashboard)
+    # - MYSQL_ATTR_SSL_CA: path ke CA certificate Aiven (jika diperlukan)
+    # - DATA_ENCRYPTION_KEY: kunci enkripsi data pasien (gunakan "Secret")

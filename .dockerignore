@@ -1,0 +1,39 @@
+# Environment dan kredensial rahasia
+.env
+.env.*
+!.env.example
+
+# Dependensi dan hasil build lokal
+node_modules/
+vendor/
+
+# Kontrol versi
+.git/
+.gitignore
+
+# File editor
+.vscode/
+.idea/
+
+# Log dan file sementara
+*.log
+.DS_Store
+
+# File backup
+*.backup
+*.bak
+
+# File debugging lokal
+routes-docker.txt
+
+# Data SQLite (database lama — tidak masuk image)
+data/
+
+# File docker-compose (tidak perlu di dalam image)
+docker-compose.yml
+docker-compose*.yml
+compose.yaml
+compose*.yaml
+
+# render.yaml (tidak perlu di dalam image)
+render.yaml

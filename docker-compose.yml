@@ -1,0 +1,75 @@
+# ==========================================================================
+# docker-compose.yml — Menjalankan Praktik Bidan secara lokal dengan Docker
+# ==========================================================================
+# PENTING: File ini menggunakan cloud database (Aiven MySQL).
+# Isi DB_* dan kunci enkripsi di file .env SEBELUM menjalankan compose.
+#
+# Perintah:
+#   docker compose up -d          # Jalankan
+#   docker compose logs -f app    # Lihat log
+#   docker compose stop           # Hentikan
+#   docker compose down           # Hentikan dan hapus container
+#   docker compose build          # Build ulang image
+#
+# JANGAN jalankan 'docker compose down -v' — tidak ada volume database lokal
+# yang perlu dihapus, tapi pastikan Anda memahami efek perintah ini.
+# ==========================================================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: praktik-bidan:local
+    container_name: praktik_bidan_app
+    ports:
+      - "10001:10000"     # Host:Container — akses via http://localhost:10001
+    environment:
+      # Port internal container (Nginx di dalam container)
+      PORT: "10000"
+
+      # Laravel
+      APP_NAME: "${APP_NAME:-Praktik Bidan Mila}"
+      APP_ENV: "${APP_ENV:-local}"
+      APP_DEBUG: "${APP_DEBUG:-false}"
+      APP_KEY: "${APP_KEY}"
+      APP_URL: "${APP_URL:-http://localhost:10001}"
+      APP_LOCALE: "id"
+      APP_FALLBACK_LOCALE: "id"
+
+      # Logging
+      LOG_CHANNEL: "stderr"
+      LOG_LEVEL: "${LOG_LEVEL:-error}"
+
+      # Cache
+      CACHE_STORE: "file"
+
+      # Database — diisi dari .env (Aiven MySQL atau database cloud lain)
+      DB_CONNECTION: "mysql"
+      DB_HOST: "${DB_HOST}"
+      DB_PORT: "${DB_PORT:-3306}"
+      DB_DATABASE: "${DB_DATABASE}"
+      DB_USERNAME: "${DB_USERNAME}"
+      DB_PASSWORD: "${DB_PASSWORD}"
+      DB_TIMEZONE: "+07:00"
+
+      # SSL/TLS untuk Aiven MySQL
+      MYSQL_ATTR_SSL_CA: "${MYSQL_ATTR_SSL_CA:-}"
+
+      # Session (gunakan database agar persisten)
+      SESSION_DRIVER: "database"
+      SESSION_LIFETIME: "720"
+      SESSION_ENCRYPT: "true"
+      SESSION_SECURE_COOKIE: "false"  # Set true jika menggunakan HTTPS
+
+      # Enkripsi data pasien (RAHASIA — jangan ubah jika ada data lama)
+      DATA_ENCRYPTION_KEY: "${DATA_ENCRYPTION_KEY}"
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:10000/up"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

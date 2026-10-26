@@ -13,3 +13,12 @@ data/
 /storage/framework/sessions/*
 /storage/framework/views/*
 /storage/logs/*
+
+# File backup sementara
+*.backup
+*.bak
+
+# File sementara debugging
+routes-docker.txt
+*.log
+*.sql
