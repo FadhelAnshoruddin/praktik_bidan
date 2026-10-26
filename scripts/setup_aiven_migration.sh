@@ -29,60 +29,86 @@ if [ ! -f data/praktik-bidan.sqlite ]; then
     exit 1
 fi
 
-echo "[1/4] Masukkan informasi koneksi Aiven MySQL Anda:"
-echo "(Informasi ini dapat dilihat pada tab 'Overview' service di Aiven Console)"
-echo ""
+# Cek apakah sudah ada konfigurasi Aiven di .env
+CURRENT_HOST=$(grep "^DB_HOST=" .env | cut -d'=' -f2- || true)
+CURRENT_PORT=$(grep "^DB_PORT=" .env | cut -d'=' -f2- || true)
+CURRENT_DB=$(grep "^DB_DATABASE=" .env | cut -d'=' -f2- || true)
+CURRENT_USER=$(grep "^DB_USERNAME=" .env | cut -d'=' -f2- || true)
 
-read -rp "  Host Aiven (contoh: mysql-xxxx.aivencloud.com): " INPUT_HOST
-read -rp "  Port Aiven (contoh: 19850): " INPUT_PORT
-read -rp "  Database Aiven [default: defaultdb]: " INPUT_DB
-INPUT_DB="${INPUT_DB:-defaultdb}"
-read -rp "  Username Aiven [default: avnadmin]: " INPUT_USER
-INPUT_USER="${INPUT_USER:-avnadmin}"
-
-# Password input secara tersembunyi agar aman
-read -rsp "  Password Aiven: " INPUT_PASS
-echo ""
-
-read -rp "  Path CA Certificate [kosongkan jika tanpa verifikasi CA lokal]: " INPUT_CA
-echo ""
-
-# Validasi input tidak kosong
-if [ -z "$INPUT_HOST" ] || [ -z "$INPUT_PORT" ] || [ -z "$INPUT_PASS" ]; then
-    echo "[-] Error: Host, Port, dan Password wajib diisi!"
-    exit 1
+USE_SAVED="n"
+if [[ "$CURRENT_HOST" == *"aivencloud.com"* ]]; then
+    echo "[i] Terdeteksi konfigurasi Aiven di .env:"
+    echo "    Host     : $CURRENT_HOST"
+    echo "    Port     : $CURRENT_PORT"
+    echo "    Database : $CURRENT_DB"
+    echo "    User     : $CURRENT_USER"
+    read -rp "  Gunakan konfigurasi tersimpan ini? [Y/n]: " CONFIRM_SAVED
+    CONFIRM_SAVED="${CONFIRM_SAVED:-Y}"
+    if [[ "$CONFIRM_SAVED" =~ ^[Yy]$ ]]; then
+        USE_SAVED="y"
+    fi
 fi
 
-echo "[2/4] Menyimpan konfigurasi ke .env lokal..."
+if [ "$USE_SAVED" != "y" ]; then
+    echo "[1/4] Masukkan informasi koneksi Aiven MySQL Anda:"
+    echo "(Informasi ini dapat dilihat pada tab 'Overview' service di Aiven Console)"
+    echo ""
 
-# Fungsi helper update atau append .env
-update_env() {
-    local key="$1"
-    local value="$2"
-    if grep -q "^${key}=" .env; then
-        sed -i "s|^${key}=.*|${key}=${value}|" .env
-    else
-        echo "${key}=${value}" >> .env
+    read -rp "  Host Aiven (contoh: mysql-xxxx.aivencloud.com): " INPUT_HOST
+    read -rp "  Port Aiven (contoh: 19850): " INPUT_PORT
+    read -rp "  Database Aiven [default: defaultdb]: " INPUT_DB
+    INPUT_DB="${INPUT_DB:-defaultdb}"
+    read -rp "  Username Aiven [default: avnadmin]: " INPUT_USER
+    INPUT_USER="${INPUT_USER:-avnadmin}"
+
+    # Password input secara tersembunyi agar aman
+    read -rsp "  Password Aiven: " INPUT_PASS
+    echo ""
+
+    # Validasi input tidak kosong
+    if [ -z "$INPUT_HOST" ] || [ -z "$INPUT_PORT" ] || [ -z "$INPUT_PASS" ]; then
+        echo "[-] Error: Host, Port, dan Password wajib diisi!"
+        exit 1
     fi
-}
 
-update_env "DB_CONNECTION" "mysql"
-update_env "DB_HOST" "$INPUT_HOST"
-update_env "DB_PORT" "$INPUT_PORT"
-update_env "DB_DATABASE" "$INPUT_DB"
-update_env "DB_USERNAME" "$INPUT_USER"
-update_env "DB_PASSWORD" "$INPUT_PASS"
+    echo "[2/4] Menyimpan konfigurasi ke .env lokal..."
 
-if [ -n "$INPUT_CA" ] && [ -f "$INPUT_CA" ]; then
-    update_env "MYSQL_ATTR_SSL_CA" "$INPUT_CA"
+    # Fungsi helper update atau append .env
+    update_env() {
+        local key="$1"
+        local value="$2"
+        if grep -q "^${key}=" .env; then
+            sed -i "s|^${key}=.*|${key}=${value}|" .env
+        else
+            echo "${key}=${value}" >> .env
+        fi
+    }
+
+    update_env "DB_CONNECTION" "mysql"
+    update_env "DB_HOST" "$INPUT_HOST"
+    update_env "DB_PORT" "$INPUT_PORT"
+    update_env "DB_DATABASE" "$INPUT_DB"
+    update_env "DB_USERNAME" "$INPUT_USER"
+    update_env "DB_PASSWORD" "$INPUT_PASS"
+else
+    echo "[1/4] Menggunakan konfigurasi Aiven yang tersimpan di .env..."
+    echo "[2/4] Konfigurasi CA certificate..."
+fi
+
+# Cek apakah aiven-ca.pem ada di direktori root proyek
+if [ -f "aiven-ca.pem" ]; then
+    echo "  [+] File aiven-ca.pem ditemukan. Mengonfigurasi MYSQL_ATTR_SSL_CA otomatis."
+    if grep -q "^MYSQL_ATTR_SSL_CA=" .env; then
+        sed -i "s|^MYSQL_ATTR_SSL_CA=.*|MYSQL_ATTR_SSL_CA=$(pwd)/aiven-ca.pem|" .env
+    else
+        echo "MYSQL_ATTR_SSL_CA=$(pwd)/aiven-ca.pem" >> .env
+    fi
 fi
 
 # Bersihkan config cache agar Laravel membaca konfigurasi baru
 php artisan config:clear >/dev/null 2>&1 || true
 
-echo "[+] Konfigurasi berhasil disimpan ke .env."
 echo ""
-
 echo "[3/4] Menguji koneksi jaringan ke Aiven MySQL..."
 PHP_TEST_CONN=$(php -r '
 require "vendor/autoload.php";
