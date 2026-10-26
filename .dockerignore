@@ -23,8 +23,9 @@ vendor/
 *.backup
 *.bak
 
-# File debugging lokal
+# File sementara debugging
 routes-docker.txt
+*.pem
 
 # Data SQLite (database lama — tidak masuk image)
 data/
