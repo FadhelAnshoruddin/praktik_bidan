@@ -23,7 +23,8 @@ return [
                 (defined('Pdo\Mysql::ATTR_SSL_CA') ? \Pdo\Mysql::ATTR_SSL_CA : \PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA')
                     ? (file_exists(env('MYSQL_ATTR_SSL_CA')) ? env('MYSQL_ATTR_SSL_CA') : base_path(env('MYSQL_ATTR_SSL_CA')))
                     : (file_exists('/tmp/aiven-ca.pem') ? '/tmp/aiven-ca.pem' : (file_exists(base_path('certs/aiven-ca.pem')) ? base_path('certs/aiven-ca.pem') : null)),
-            ]) : [],
+                (defined('Pdo\Mysql::ATTR_SSL_VERIFY_SERVER_CERT') ? \Pdo\Mysql::ATTR_SSL_VERIFY_SERVER_CERT : \PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT) => false,
+            ], fn ($v) => $v !== null) : [],
         ],
     ],
     'migrations' => [
