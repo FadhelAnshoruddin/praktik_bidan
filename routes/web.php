@@ -6,9 +6,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', function () {
-    DB::connection()->getPdo();
+    try {
+        DB::connection()->getPdo();
 
-    return response()->json(['status' => 'ok', 'database' => 'mysql']);
+        return response()->json(['status' => 'ok', 'database' => 'mysql']);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+        ], 500);
+    }
 })->name('health');
 
 Route::middleware('throttle:120,15')->group(function (): void {
