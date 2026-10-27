@@ -1,0 +1,14 @@
+/vendor
+/node_modules
+.env
+.env.*
+!.env.example
+data/
+*.sql
+*.backup
+*.bak
+docker-compose.yml
+Dockerfile
+.dockerignore
+docker-entrypoint.sh
+scripts/

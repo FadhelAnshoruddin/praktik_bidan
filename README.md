@@ -180,53 +180,63 @@ mysql -h <DB_HOST> -P <DB_PORT> -u <DB_USERNAME> -p <DB_NAME> < backup_praktik_b
 
 ---
 
-## 7. Deployment ke Render (Docker Web Service)
+## 7. Deployment ke Vercel (Serverless)
 
-Render menjalankan aplikasi sebagai container Docker yang menerima koneksi HTTP.
+Aplikasi ini siap di-deploy ke Vercel menggunakan arsitektur **Serverless Function** melalui `vercel-php`. Seluruh aset statis Vite dilayani langsung oleh Vercel Global Edge Network (CDN), sementara logika Laravel dieksekusi secara serverless melalui `api/index.php`.
 
-### Karakteristik Paket Gratis Render:
-- **Spin-down otomatis**: Service akan tidur setelah 15 menit tanpa trafik. Permintaan pertama akan memakan waktu sekitar 50 detik (cold start).
-- **Ephemeral Filesystem**: File yang disimpan di disk lokal container akan hilang saat restart/deploy. Aplikasi ini sudah siap karena session dan data tersimpan di database MySQL, serta aset frontend ter-bundle di dalam image.
-- **Port Otomatis**: Render menyuntikkan environment variable `$PORT` (default 10000). File `docker-entrypoint.sh` secara otomatis mengonfigurasi Nginx untuk mendengarkan pada port tersebut.
+### A. Karakteristik Hosting di Vercel:
+- **Filesystem Read-Only:** Vercel hanya mengizinkan penulisan pada direktori `/tmp`. File `vercel.json` dan `api/index.php` telah dikonfigurasi secara otomatis untuk mengalihkan cache Blade views, config, dan routes ke `/tmp/storage/`.
+- **Database Cloud:** Database terhubung ke **Aiven for MySQL**. Sertifikat SSL CA (`certs/aiven-ca.pem`) otomatis terbaca oleh Laravel.
+- **Sesi Pengguna:** Menggunakan `SESSION_DRIVER=database` sehingga session tersimpan aman di tabel MySQL dan tidak hilang saat fungsi serverless berganti instance.
+- **Kompilasi Frontend (Vite):** Vercel secara otomatis menjalankan `npm run build` sebelum mendeploy.
 
-### Langkah Deployment di Dashboard Render:
+---
 
-1. Buat akun di [Render](https://render.com) dan hubungkan akun GitHub Anda.
-2. Klik **New +** → **Web Service**.
-3. Pilih repository `Praktik_bidan` (branch: `main`).
-4. Konfigurasi service:
-   - **Name**: `praktik-bidan`
-   - **Runtime**: `Docker`
-   - **Dockerfile Path**: `./Dockerfile`
-   - **Instance Type**: `Free`
-5. Buka tab **Environment** dan tambahkan variabel berikut:
+### B. Langkah-Langkah Deployment di Vercel Dashboard
 
-| Key | Value / Catatan |
-|---|---|
-| `APP_NAME` | `Praktik Bidan Mila` |
-| `APP_ENV` | `production` |
-| `APP_DEBUG` | `false` |
-| `APP_KEY` | *(Salin dari `php artisan key:generate --show` lokal)* |
-| `APP_URL` | `https://<nama-service>.onrender.com` |
-| `LOG_CHANNEL` | `stderr` |
-| `LOG_LEVEL` | `error` |
-| `CACHE_STORE` | `file` |
-| `DB_CONNECTION` | `mysql` |
-| `DB_HOST` | Host Aiven MySQL Anda |
-| `DB_PORT` | Port Aiven MySQL Anda |
-| `DB_DATABASE` | Nama database Aiven |
-| `DB_USERNAME` | Username Aiven |
-| `DB_PASSWORD` | Password Aiven (gunakan opsi Secret) |
-| `DB_TIMEZONE` | `+07:00` |
-| `SESSION_DRIVER` | `database` |
-| `SESSION_LIFETIME` | `720` |
-| `SESSION_ENCRYPT` | `true` |
-| `SESSION_SECURE_COOKIE` | `true` |
-| `DATA_ENCRYPTION_KEY` | Kunci enkripsi data pasien (gunakan opsi Secret) |
+1. **Buka Vercel Dashboard:**
+   - Kunjungi **[vercel.com](https://vercel.com/)** dan login dengan akun GitHub Anda.
+   - Klik tombol **Add New...** → **Project**.
 
-6. Klik **Deploy Web Service**.
-7. Pantau build log dan runtime log di dashboard Render.
-8. Setelah status **Live**, akses URL `https://<nama-service>.onrender.com`.
+2. **Import Repositori:**
+   - Cari dan pilih repositori **`Praktik_bidan`** (atau `FadhelAnshoruddin/Praktik_bidan`), lalu klik **Import**.
+
+3. **Konfigurasi Project:**
+   - **Project Name:** Berikan nama project (contoh: `praktik-bidan-mila`).
+     *URL publik Anda akan menjadi:* `https://<project-name>.vercel.app`.
+   - **Framework Preset:** Pilih **Other** (biarkan `vercel.json` yang mengatur routing dan runtime).
+   - **Root Directory:** Biarkan `./` (default).
+   - **Build and Output Settings:** Biarkan default (Vercel membaca `outputDirectory: "public"` dari `vercel.json`).
+
+4. **Masukkan Environment Variables:**
+   Buka bagian **Environment Variables** dan tambahkan variabel berikut:
+
+| Key | Value / Nilai | Keterangan |
+|---|---|---|
+| `APP_NAME` | `Praktik Bidan Mila` | Nama aplikasi |
+| `APP_ENV` | `production` | Mode produksi |
+| `APP_DEBUG` | `false` | Matikan mode debug |
+| `APP_KEY` | `base64:MpOXtXr7w3dEX7BeKmfYZEFdhzfSqwSK0ZgGgwzpTvI=` | Kunci sesi Laravel |
+| `APP_URL` | `https://<nama-project>.vercel.app` | Sesuaikan dengan domain Vercel Anda |
+| `DB_CONNECTION` | `mysql` | Driver MySQL |
+| `DB_HOST` | `mysql-7091b4a-praktikbidan.h.aivencloud.com` | Host Aiven MySQL |
+| `DB_PORT` | `19203` | Port Aiven MySQL |
+| `DB_DATABASE` | `defaultdb` | Nama database Aiven |
+| `DB_USERNAME` | `avnadmin` | User database Aiven |
+| `DB_PASSWORD` | `<password-aiven-anda>` | Password database Aiven (lihat di .env lokal) |
+| `DB_TIMEZONE` | `+07:00` | Zona waktu WIB |
+| `SESSION_DRIVER` | `database` | Session persisten di MySQL |
+| `SESSION_LIFETIME` | `720` | Masa berlaku sesi (12 jam) |
+| `SESSION_ENCRYPT` | `true` | Enkripsi cookie sesi |
+| `SESSION_SECURE_COOKIE` | `true` | Wajib HTTPS cookie di Vercel |
+| `DATA_ENCRYPTION_KEY` | `TsMt3ik3YibDSFMqGaVqVXlqLHuxO4e6w4Gofkis0Qg=` | Kunci enkripsi data pasien |
+
+*(Catatan: Anda tidak perlu menambahkan `MYSQL_ATTR_SSL_CA` karena `config/database.php` otomatis mendeteksi file `certs/aiven-ca.pem` dari repositori).*
+
+5. **Eksekusi Deploy:**
+   - Klik tombol **Deploy**.
+   - Tunggu hingga proses build dan deployment selesai (~1-2 menit).
+   - Setelah selesai, klik **Continue to Dashboard** atau langsung klik pratinjau domain untuk membuka website Anda!
 
 ---
 
@@ -249,5 +259,5 @@ Render menjalankan aplikasi sebagai container Docker yang menerima koneksi HTTP.
 ## 9. Keamanan & Kebijakan Rahasia
 
 - Jangan pernah menambahkan file `.env`, file `.sql`, atau file kunci ke Git.
-- File `.gitignore` dan `.dockerignore` telah dikonfigurasi untuk mencegah kebocoran secret.
-- Semua secret produksi wajib dimasukkan secara eksklusif melalui dashboard Render.
+- File `.gitignore`, `.dockerignore`, dan `.vercelignore` telah dikonfigurasi untuk mencegah kebocoran secret.
+- Semua secret produksi wajib dimasukkan secara eksklusif melalui dashboard Vercel.
